@@ -19,7 +19,7 @@ pub use bedrock::types::{
 };
 use futures::stream::{self, BoxStream, Stream};
 use serde::{Deserialize, Serialize};
-use serde_json::{Number, Value};
+use serde_json::{json, Number, Value};
 use thiserror::Error;
 
 pub use crate::models::*;
@@ -50,9 +50,19 @@ pub async fn stream_completion(
 ) -> Result<BoxStream<'static, Result<BedrockStreamingResponse, BedrockError>>, Error> {
     handle
         .spawn(async move {
+            let additional_fields = json!({
+                "thinking": {
+                    "type": "enabled",
+                    "budget_tokens": 2_000
+                }
+            });
+
             let response = bedrock::Client::converse_stream(&client)
                 .model_id(request.model.clone())
                 .set_messages(request.messages.into())
+                .set_additional_model_request_fields(Some(value_to_aws_document(
+                    &additional_fields,
+                )))
                 .send()
                 .await;
 
